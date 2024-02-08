@@ -6,7 +6,7 @@ import logging
 from secrets import token_urlsafe
 from typing import Any, Dict, List, Mapping, Optional
 import uuid
-
+from binascii import unhexlify, hexlify
 from aiohttp import web
 from aiohttp_apispec import docs, form_schema, request_schema, response_schema
 from aries_cloudagent.admin.request_context import AdminRequestContext
@@ -17,6 +17,12 @@ from aries_cloudagent.resolver.did_resolver import DIDResolver
 from aries_cloudagent.storage.error import StorageError, StorageNotFoundError
 from aries_cloudagent.wallet.base import WalletError
 from aries_cloudagent.wallet.error import WalletNotFoundError
+import os
+import cbor2
+from pymdoccbor.mso.issuer import MsoIssuer
+from pymdoccbor.mdoc.issuer import MdocCborIssuer
+from pymdoccbor.mdoc.verifier import MdocCbor
+
 from aries_cloudagent.wallet.jwt import (
     JWTVerifyResult,
     b64_to_dict,
@@ -302,6 +308,7 @@ async def issue_cred(request: web.Request):
 
     As validated upon presentation of a valid Access Token.
     """
+
     context: AdminRequestContext = request["context"]
     token_result = await check_token(
         context.profile, request.headers.get("Authorization")
@@ -318,6 +325,8 @@ async def issue_cred(request: web.Request):
     except (StorageError, BaseModelError, StorageNotFoundError) as err:
         raise web.HTTPBadRequest(reason=err.roll_up) from err
 
+    if supported.format == "mso_mdoc":
+        return await issue_mso_mdoc_cred(supported)
     if supported.format != "jwt_vc_json":
         raise web.HTTPUnprocessableEntity(reason="Only jwt_vc_json is supported.")
     if supported.format_data is None:
@@ -386,6 +395,79 @@ async def issue_cred(request: web.Request):
         }
     )
 
+async def issue_mso_mdoc_cred(supported: SupportedCredential):
+
+    msoi = MsoIssuer(
+        data = {
+            "eu.europa.ec.eudiw.pid.1": {
+                "family_name": "Raffaello",
+                "given_name": "Mascetti",
+                "birth_date": "1922-03-13"
+            }
+        },
+        private_key = {
+            'KTY': 'EC2',
+            'CURVE': 'P_256',
+            'ALG': 'ES256',
+            'D': os.urandom(32),
+            'KID': b"demo-kid"
+        }
+    )
+
+    PKEY = {
+        'KTY': 'EC2',
+        'CURVE': 'P_256',
+        'ALG': 'ES256',
+        'D': os.urandom(32),
+        'KID': b"demo-kid"
+    }
+
+    PID_DATA = {
+        "eu.europa.ec.eudiw.pid.1": {
+            "family_name": "Raffaello",
+            "given_name": "Mascetti",
+            "birth_date": "1922-03-13",
+            "birth_place": "Rome",
+            "birth_country": "IT"
+        },
+        "eu.europa.ec.eudiw.pid.it.1": {
+            "tax_id_code": "TINIT-XXXXXXXXXXXXXXX"
+        }
+    }
+
+    mdoci = MdocCborIssuer(
+        private_key=PKEY
+    )
+
+    mdoc = mdoci.new(
+        doctype="eu.europa.ec.eudiw.pid.1",
+        data=PID_DATA,
+        devicekeyinfo=PKEY  # TODO
+    )
+
+    mso = msoi.sign()
+    
+    issuerSigned = mdoci.signed['documents'][0]['issuerSigned']
+    dumps = cbor2.dumps(
+            {
+                'nameSpaces': issuerSigned['nameSpaces'],
+                'issuerAuth': cbor2.loads(mso.encode(tag=False))
+            }
+            )
+    #dumps = issuerSigned.dumps()
+    hexlified = hexlify(dumps)
+    hex = str(hexlified, 'ascii')
+    
+    
+    #encoded = mso.encode()
+    #hexlified = hexlify(encoded)
+    #hex = str(hexlified, 'ascii')
+    return web.json_response(
+        {
+            "format": "mso_mdoc",
+            "credential": hex,
+        }
+    )
 
 async def register(app: web.Application):
     """Register routes."""

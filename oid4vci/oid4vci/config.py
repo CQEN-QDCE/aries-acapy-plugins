@@ -35,6 +35,12 @@ class Config:
         endpoint = plugin_settings.get("endpoint") or getenv("OID4VCI_ENDPOINT")
 
         if not host:
+            host = "0.0.0.0"
+        if not port:
+            port = 8081
+        if not endpoint:
+            endpoint = "http://localhost:8081"
+        if not host:
             raise ConfigError("host", "OID4VCI_HOST")
         if not port:
             raise ConfigError("port", "OID4VCI_PORT")
