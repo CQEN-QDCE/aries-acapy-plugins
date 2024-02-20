@@ -27,10 +27,10 @@ genesis-url: https://indy.igrant.io/genesis
 # multitenant-admin: true
 
 # Wallet
-# wallet-name: default
+wallet-name: default
 wallet-type: askar
 wallet-storage-type: default
-# wallet-key: "insecure, for use in demo only"
+wallet-key: "insecure, for use in demo only"
 
 log-level: info
 
