@@ -23,11 +23,13 @@ class SupportedCredential(BaseRecord):
         *,
         supported_cred_id: Optional[str] = None,
         format: Optional[str] = None,
+        doc_type: Optional[str] = None,
         identifier: Optional[str] = None,
         cryptographic_binding_methods_supported: Optional[List[str]] = None,
         cryptographic_suites_supported: Optional[List[str]] = None,
         display: Optional[List[Dict]] = None,
         format_data: Optional[Dict] = None,
+        claims: Optional[Dict] = None,
         vc_additional_data: Optional[Dict] = None,
         **kwargs,
     ):
@@ -50,12 +52,14 @@ class SupportedCredential(BaseRecord):
         """
         super().__init__(supported_cred_id, **kwargs)
         self.format = format
+        self.doc_type = doc_type
         self.identifier = identifier
         self.cryptographic_binding_methods_supported = (
             cryptographic_binding_methods_supported
         )
         self.cryptographic_suites_supported = cryptographic_suites_supported
         self.display = display
+        self.claims = claims
         self.format_data = format_data
         self.vc_additional_data = vc_additional_data
 
@@ -71,11 +75,13 @@ class SupportedCredential(BaseRecord):
             prop: getattr(self, prop)
             for prop in (
                 "format",
+                "doc_type",
                 "identifier",
                 "cryptographic_binding_methods_supported",
                 "cryptographic_suites_supported",
                 "display",
                 "format_data",
+                "claims",
                 "vc_additional_data",
             )
         }
@@ -91,6 +97,7 @@ class SupportedCredential(BaseRecord):
             prop: value
             for prop in (
                 "format",
+                "doc_type",
                 "cryptographic_binding_methods_supported",
                 "cryptographic_suites_supported",
                 "display",
@@ -104,6 +111,7 @@ class SupportedCredential(BaseRecord):
         issuer_metadata = {
             **issuer_metadata,
             **(self.format_data or {}),
+            **(self.claims or {}),
         }
         return issuer_metadata
 
@@ -120,7 +128,8 @@ class SupportedCredentialSchema(BaseRecordSchema):
         required=False,
         description="supported credential identifier",
     )
-    format = fields.Str(required=True, metadata={"example": "jwt_vc_json"})
+    format = fields.Str(required=True, metadata={"example": "jwt_vc_json or mso_mdoc"})
+    doc_type = fields.Str(required=False, metadata={"example": "org.iso.18013.5.1.mDL"})
     identifier = fields.Str(
         required=True, metadata={"example": "UniversityDegreeCredential"}
     )
@@ -158,6 +167,25 @@ class SupportedCredentialSchema(BaseRecordSchema):
                     "last_name": {"display": [{"name": "Surname", "locale": "en-US"}]},
                     "degree": {},
                     "gpa": {"display": [{"name": "GPA"}]},
+                }
+            }
+        },
+    )
+    claims = fields.Dict(
+        required=False,
+        metadata={
+            "example": {
+                "org.iso.18013.5.1": {
+                    "given_name": {
+                        "display": [{"name": "Given Name", "locale": "en-US"}]
+                    },
+                    "family_name": {
+                        "display": [{"name": "Surname", "locale": "en-US"}]
+                    },
+                    "birth_date": {}
+                },
+                "org.iso.18013.5.1.aamva": {
+                    "organ_donor": {}
                 }
             }
         },

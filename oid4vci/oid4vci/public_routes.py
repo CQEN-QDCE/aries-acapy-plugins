@@ -326,7 +326,7 @@ async def issue_cred(request: web.Request):
         raise web.HTTPBadRequest(reason=err.roll_up) from err
 
     if supported.format == "mso_mdoc":
-        return await issue_mso_mdoc_cred(supported)
+        return await issue_mso_mdoc_cred(ex_record, supported)
     if supported.format != "jwt_vc_json":
         raise web.HTTPUnprocessableEntity(reason="Only jwt_vc_json is supported.")
     if supported.format_data is None:
@@ -395,24 +395,18 @@ async def issue_cred(request: web.Request):
         }
     )
 
-async def issue_mso_mdoc_cred(supported: SupportedCredential):
+async def issue_mso_mdoc_cred(ex_record: OID4VCIExchangeRecord, supported_credential: SupportedCredential):
 
-    msoi = MsoIssuer(
-        data = {
-            "eu.europa.ec.eudiw.pid.1": {
-                "family_name": "Raffaello",
-                "given_name": "Mascetti",
-                "birth_date": "1922-03-13"
-            }
-        },
-        private_key = {
-            'KTY': 'EC2',
-            'CURVE': 'P_256',
-            'ALG': 'ES256',
-            'D': os.urandom(32),
-            'KID': b"demo-kid"
-        }
-    )
+#    msoi = MsoIssuer(
+#        data = ex_record.claims,
+#        private_key = {
+#            'KTY': 'EC2',
+#            'CURVE': 'P_256',
+#            'ALG': 'ES256',
+#            'D': os.urandom(32),
+#            'KID': b"demo-kid"
+#        }
+#    )
 
     PKEY = {
         'KTY': 'EC2',
@@ -422,46 +416,33 @@ async def issue_mso_mdoc_cred(supported: SupportedCredential):
         'KID': b"demo-kid"
     }
 
-    PID_DATA = {
-        "eu.europa.ec.eudiw.pid.1": {
-            "family_name": "Raffaello",
-            "given_name": "Mascetti",
-            "birth_date": "1922-03-13",
-            "birth_place": "Rome",
-            "birth_country": "IT"
-        },
-        "eu.europa.ec.eudiw.pid.it.1": {
-            "tax_id_code": "TINIT-XXXXXXXXXXXXXXX"
-        }
-    }
+    PID_DATA = ex_record.claims
 
     mdoci = MdocCborIssuer(
         private_key=PKEY
     )
 
     mdoc = mdoci.new(
-        doctype="eu.europa.ec.eudiw.pid.1",
+        doctype=supported_credential.doc_type,
         data=PID_DATA,
         devicekeyinfo=PKEY  # TODO
     )
 
-    mso = msoi.sign()
+#    mso = msoi.sign()
     
-    issuerSigned = mdoci.signed['documents'][0]['issuerSigned']
-    dumps = cbor2.dumps(
-            {
-                'nameSpaces': issuerSigned['nameSpaces'],
-                'issuerAuth': cbor2.loads(mso.encode(tag=False))
-            }
-            )
-    #dumps = issuerSigned.dumps()
+#    issuerSigned = mdoci.signed['documents'][0]['issuerSigned']
+    #test = mdoci.signed['documents'][0].dump()
+#    dumps = cbor2.dumps(
+#            {
+#                'nameSpaces': issuerSigned['nameSpaces'],
+#                'issuerAuth': cbor2.loads(mso.encode(tag=False))
+#            }
+#            )
+    dumps = cbor2.dumps(mdoci.signed['documents'][0])
     hexlified = hexlify(dumps)
     hex = str(hexlified, 'ascii')
     
     
-    #encoded = mso.encode()
-    #hexlified = hexlify(encoded)
-    #hex = str(hexlified, 'ascii')
     return web.json_response(
         {
             "format": "mso_mdoc",

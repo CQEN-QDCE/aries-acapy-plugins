@@ -17,6 +17,7 @@ from pymdoccbor.exceptions import (
 from pymdoccbor import settings
 from pymdoccbor.x509 import MsoX509Fabric
 from pymdoccbor.tools import shuffle_dict
+import cbor2
 
 
 class MsoIssuer(MsoX509Fabric):
@@ -111,7 +112,8 @@ class MsoIssuer(MsoX509Fabric):
         else:
             # five years
             exp = utcnow + datetime.timedelta(hours=(24 * 365) * 5)
-
+        if device_key == None:
+            device_key = cbor2.loads(self.public_key.encode())
         payload = {
             'version': '1.0',
             'digestAlgorithm': settings.HASHALG_MAP[settings.PYMDOC_HASHALG],

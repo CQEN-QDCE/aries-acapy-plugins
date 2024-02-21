@@ -40,11 +40,6 @@ class MdocCborIssuer:
         )
 
         mso = msoi.sign()
-        #if mso.signature:
-        #    message = [cbor2.loads(mso.phdr_encoded), cbor2.loads(mso.uhdr_encoded), cbor2.loads(mso.payload), cbor2.loads(mso.signature)]
-        #else:
-        #    message = [cbor2.loads(mso.phdr_encoded), cbor2.loads(mso.uhdr_encoded), cbor2.loads(mso.payload)]
-        message = cbor2.loads(mso.payload)
         # TODO: for now just a single document, it would be trivial having
         # also multiple but for now I don't have use cases for this
         self.signed = {
@@ -56,11 +51,10 @@ class MdocCborIssuer:
                         "nameSpaces": {
                             ns: [
                                 cbor2.CBORTag(24, value=v) for k, v in dgst.items()
-                                #cbor2.CBORTag(24, value={k: v}) for k, v in dgst.items()
                             ]
                             for ns, dgst in msoi.disclosure_map.items()
                         },
-                        "issuerAuth": message # mso.encode()
+                        "issuerAuth": cbor2.loads(mso.encode()).value
                     },
                     # this is required during the presentation.
                     #  'deviceSigned': {
