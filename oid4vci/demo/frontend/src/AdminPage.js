@@ -1,9 +1,11 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from 'react-i18next';
 import "./InputForm.css"
 
 const RegistrationPage = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   const API_BASE_URL = "http://localhost:3001";
   const API_KEY = "thisistheplace";
@@ -113,7 +115,7 @@ const RegistrationPage = () => {
       {/* registration form */}
       <div class="input-form-group">
         <button class="btn btn-warning btn-lg input-form-button" onClick={handleRegistration}>
-          Register
+          {t('Register')}
         </button>
       </div>
     </div>

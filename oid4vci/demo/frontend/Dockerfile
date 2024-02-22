@@ -8,6 +8,7 @@ WORKDIR /app
 COPY frontend/package*.json ./
 
 # Install project dependencies
+RUN npm config set registry http://registry.npmjs.org/
 RUN npm install
 
 # Copy the entire project directory into the container
