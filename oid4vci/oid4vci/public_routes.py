@@ -19,9 +19,9 @@ from aries_cloudagent.wallet.base import WalletError
 from aries_cloudagent.wallet.error import WalletNotFoundError
 import os
 import cbor2
-from pymdoccbor.mso.issuer import MsoIssuer
-from pymdoccbor.mdoc.issuer import MdocCborIssuer
-from pymdoccbor.mdoc.verifier import MdocCbor
+from .pymdoccbor.mso.issuer import MsoIssuer
+from .pymdoccbor.mdoc.issuer import MdocCborIssuer
+from .pymdoccbor.mdoc.verifier import MdocCbor
 
 from aries_cloudagent.wallet.jwt import (
     JWTVerifyResult,
@@ -396,17 +396,6 @@ async def issue_cred(request: web.Request):
     )
 
 async def issue_mso_mdoc_cred(ex_record: OID4VCIExchangeRecord, supported_credential: SupportedCredential):
-
-#    msoi = MsoIssuer(
-#        data = ex_record.claims,
-#        private_key = {
-#            'KTY': 'EC2',
-#            'CURVE': 'P_256',
-#            'ALG': 'ES256',
-#            'D': os.urandom(32),
-#            'KID': b"demo-kid"
-#        }
-#    )
 
     PKEY = {
         'KTY': 'EC2',

@@ -11,12 +11,12 @@ from pycose.messages import Sign1Message
 from typing import Union
 import json
 
-from pymdoccbor.exceptions import (
+from ..exceptions import (
     MsoPrivateKeyRequired
 )
-from pymdoccbor import settings
-from pymdoccbor.x509 import MsoX509Fabric
-from pymdoccbor.tools import shuffle_dict
+from .. import settings
+from ..x509 import MsoX509Fabric
+from ..tools import shuffle_dict
 import cbor2
 
 

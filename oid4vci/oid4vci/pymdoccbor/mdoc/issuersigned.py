@@ -1,7 +1,7 @@
 import cbor2
 from typing import Union
 
-from pymdoccbor.mso.verifier import MsoVerifier
+from ..mso.verifier import MsoVerifier
 
 
 class IssuerSigned:

@@ -4,8 +4,8 @@ import logging
 
 from typing import List
 
-from pymdoccbor.exceptions import InvalidMdoc
-from pymdoccbor.mdoc.issuersigned import IssuerSigned
+from ..exceptions import InvalidMdoc
+from .issuersigned import IssuerSigned
 
 logger = logging.getLogger('pymdoccbor')
 

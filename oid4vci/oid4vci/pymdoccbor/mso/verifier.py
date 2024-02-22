@@ -7,12 +7,12 @@ from pycose.messages import Sign1Message
 
 from typing import Optional
 
-from pymdoccbor.exceptions import (
+from ..exceptions import (
     MsoX509ChainNotFound,
     UnsupportedMsoDataFormat
 )
-from pymdoccbor import settings
-from pymdoccbor.tools import bytes2CoseSign1, cborlist2CoseSign1
+from .. import settings
+from ..tools import bytes2CoseSign1, cborlist2CoseSign1
 
 
 logger = logging.getLogger("pymdoccbor")

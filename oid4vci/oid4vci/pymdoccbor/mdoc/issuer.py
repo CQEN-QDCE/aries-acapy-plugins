@@ -5,7 +5,7 @@ import logging
 from pycose.keys import CoseKey
 from typing import Union
 
-from pymdoccbor.mso.issuer import MsoIssuer
+from ..mso.issuer import MsoIssuer
 
 logger = logging.getLogger('pymdoccbor')
 
