@@ -326,7 +326,7 @@ async def issue_cred(request: web.Request):
         raise web.HTTPBadRequest(reason=err.roll_up) from err
 
     if supported.format == "mso_mdoc":
-        return await issue_mso_mdoc_cred(ex_record, supported)
+        return await issue_mso_mdoc_cred(ex_record, supported, context)
     if supported.format != "jwt_vc_json":
         raise web.HTTPUnprocessableEntity(reason="Only jwt_vc_json is supported.")
     if supported.format_data is None:
@@ -395,7 +395,7 @@ async def issue_cred(request: web.Request):
         }
     )
 
-async def issue_mso_mdoc_cred(ex_record: OID4VCIExchangeRecord, supported_credential: SupportedCredential):
+async def issue_mso_mdoc_cred(ex_record: OID4VCIExchangeRecord, supported_credential: SupportedCredential, context: AdminRequestContext):
 
     PKEY = {
         'KTY': 'EC2',
@@ -431,7 +431,14 @@ async def issue_mso_mdoc_cred(ex_record: OID4VCIExchangeRecord, supported_creden
     hexlified = hexlify(dumps)
     hex = str(hexlified, 'ascii')
     
-    
+    async with context.session() as session:
+        ex_record.state = OID4VCIExchangeRecord.STATE_ISSUED
+        # Cause webhook to be emitted
+        await ex_record.save(session, reason="Credential issued")
+        # Exchange is completed, record can be cleaned up
+        # But we'll leave it to the controller
+        # await ex_record.delete_record(session)
+            
     return web.json_response(
         {
             "format": "mso_mdoc",
