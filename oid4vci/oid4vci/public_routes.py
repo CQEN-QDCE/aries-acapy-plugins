@@ -44,6 +44,37 @@ PRE_AUTHORIZED_CODE_GRANT_TYPE = "urn:ietf:params:oauth:grant-type:pre-authorize
 NONCE_BYTES = 16
 EXPIRES_IN = 86400
 
+class AuthorizationServerMetadataSchema(OpenAPISchema):
+    """Authorization Server metadata schema."""
+
+    issuer = fields.Str(
+        required=True,
+        metadata={"description": "The authorization server's issuer identifier."},
+    )
+    authorization_endpoint = fields.Str(
+        required=True,
+        metadata={"description": "URL of the authorization server's authorization endpoint."},
+    )
+    token_endpoint = fields.Str(
+        required=True,
+        metadata={"description": "URL of the authorization server's token endpoint."},
+    )
+
+@docs(tags=["oid4vci"], summary="Get authorization Server metadata")
+@response_schema(AuthorizationServerMetadataSchema())
+async def authorization_server_metadata(request: web.Request):
+    """Authorization Server metadata endpoint."""
+    context: AdminRequestContext = request["context"]
+    config = Config.from_settings(context.settings)
+    public_url = config.endpoint
+
+    metadata = {
+        "issuer": f"{public_url}/",
+        "authorization_endpoint": f"{public_url}/authorization",
+        "token_endpoint": f"{public_url}/token",
+    }
+
+    return web.json_response(metadata)
 
 class CredentialIssuerMetadataSchema(OpenAPISchema):
     """Credential issuer metadata schema."""
@@ -450,6 +481,11 @@ async def register(app: web.Application):
     """Register routes."""
     app.add_routes(
         [
+            web.get(
+                "/.well-known/oauth-authorization-server",
+                authorization_server_metadata,
+                allow_head=False,
+            ),
             web.get(
                 "/.well-known/openid-credential-issuer",
                 credential_issuer_metadata,
