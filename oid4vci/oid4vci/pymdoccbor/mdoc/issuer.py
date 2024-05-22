@@ -38,8 +38,12 @@ class MdocCborIssuer:
             data=data,
             private_key=self.private_key
         )
+        encoded = cbor2.loads(devicekeyinfo.encode())
+        mso = msoi.sign(encoded)
 
-        mso = msoi.sign()
+        issuerAuth = cbor2.loads(mso.encode()).value
+        issuerAuth[2] = cbor2.dumps(cbor2.CBORTag(24, value=issuerAuth[2]))
+        
         # TODO: for now just a single document, it would be trivial having
         # also multiple but for now I don't have use cases for this
         self.signed = {
@@ -54,12 +58,12 @@ class MdocCborIssuer:
                             ]
                             for ns, dgst in msoi.disclosure_map.items()
                         },
-                        "issuerAuth": cbor2.loads(mso.encode()).value
+                        #"issuerAuth": cbor2.loads(mso.encode()).value
+                        "issuerAuth": issuerAuth
                     },
                     # this is required during the presentation.
-                    #  'deviceSigned': {
-                        #  # TODO
-                    #  }
+                    #'deviceSigned': {
+                    #}
                 }
             ],
             'status': self.status

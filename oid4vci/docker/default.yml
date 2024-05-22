@@ -17,6 +17,7 @@ endpoint:
 # plugins
 plugin:
   - oid4vci
+  - mso_mdoc
 
 #config
 genesis-url: https://indy.igrant.io/genesis

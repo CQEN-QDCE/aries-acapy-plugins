@@ -19,9 +19,13 @@ cbor2 = { version = ">=5.4.0, < 5.5.0", optional = false }
 cwt = { version = ">=2.3.0, < 2.4", optional = false }
 pycose = { version = ">=1.0.1, < 1.1.0", optional = false }
 anoncreds = "^0.1.0"
+mso-mdoc = {path = "../mso_mdoc", optional = true, develop = true}
 
 [tool.poetry.extras]
 aca-py = ["aries-cloudagent"]
+mdoc = [
+    "mso-mdoc"
+]
 
 [tool.poetry.dev-dependencies]
 ruff = "^0.1.2"

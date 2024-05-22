@@ -114,6 +114,7 @@ class MsoIssuer(MsoX509Fabric):
             exp = utcnow + datetime.timedelta(hours=(24 * 365) * 5)
         if device_key == None:
             device_key = cbor2.loads(self.public_key.encode())
+
         payload = {
             'version': '1.0',
             'digestAlgorithm': settings.HASHALG_MAP[settings.PYMDOC_HASHALG],

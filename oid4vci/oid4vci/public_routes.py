@@ -22,6 +22,7 @@ import cbor2
 from .pymdoccbor.mso.issuer import MsoIssuer
 from .pymdoccbor.mdoc.issuer import MdocCborIssuer
 from .pymdoccbor.mdoc.verifier import MdocCbor
+from  mso_mdoc.v1_0.mdoc import mso_mdoc_sign, mso_mdoc_verify
 
 from aries_cloudagent.wallet.jwt import (
     JWTVerifyResult,
@@ -38,6 +39,8 @@ from pydid import DIDUrl
 from .config import Config
 from .models.exchange import OID4VCIExchangeRecord
 from .models.supported_cred import SupportedCredential
+from pycose.keys import CoseKey, EC2Key
+from base64 import urlsafe_b64decode 
 
 LOGGER = logging.getLogger(__name__)
 PRE_AUTHORIZED_CODE_GRANT_TYPE = "urn:ietf:params:oauth:grant-type:pre-authorized_code"
@@ -110,7 +113,7 @@ async def credential_issuer_metadata(request: web.Request):
     context: AdminRequestContext = request["context"]
     config = Config.from_settings(context.settings)
     public_url = config.endpoint
-
+    
     async with context.session() as session:
         # TODO If there's a lot, this will be a problem
         credentials_supported = await SupportedCredential.query(session)
@@ -357,7 +360,8 @@ async def issue_cred(request: web.Request):
         raise web.HTTPBadRequest(reason=err.roll_up) from err
 
     if supported.format == "mso_mdoc":
-        return await issue_mso_mdoc_cred(ex_record, supported, context)
+        pop = await handle_proof_of_posession(context.profile, body["proof"], ex_record.nonce)
+        return await issue_mso_mdoc_cred(ex_record, supported, context, pop)
     if supported.format != "jwt_vc_json":
         raise web.HTTPUnprocessableEntity(reason="Only jwt_vc_json is supported.")
     if supported.format_data is None:
@@ -426,7 +430,9 @@ async def issue_cred(request: web.Request):
         }
     )
 
-async def issue_mso_mdoc_cred(ex_record: OID4VCIExchangeRecord, supported_credential: SupportedCredential, context: AdminRequestContext):
+async def issue_mso_mdoc_cred(ex_record: OID4VCIExchangeRecord, supported_credential: SupportedCredential, context: AdminRequestContext, pop: PopResult):
+
+    #CoseKey.from_dict()
 
     PKEY = {
         'KTY': 'EC2',
@@ -435,6 +441,34 @@ async def issue_mso_mdoc_cred(ex_record: OID4VCIExchangeRecord, supported_creden
         'D': os.urandom(32),
         'KID': b"demo-kid"
     }
+    xbytes = urlsafe_b64decode(pop.holder_jwk['x'] + '=' * (4 - len(pop.holder_jwk['x']) % 4))
+    len1 = len(xbytes)
+    ybytes = urlsafe_b64decode(pop.holder_jwk['y'] + '=' * (4 - len(pop.holder_jwk['y']) % 4))
+    len2 = len(ybytes)
+    HOLDER_KEY = {
+        'KTY': pop.holder_jwk['kty'] + '2',
+        'CURVE': pop.holder_jwk['crv'].replace('-', '_'),
+        'X': xbytes,
+        'Y': ybytes
+    }
+    HOLDER_KEY = CoseKey.from_dict(HOLDER_KEY)
+    encoded = cbor2.loads(HOLDER_KEY.encode())
+    headers = {
+        "deviceKey": encoded
+    }
+    payload = ex_record.claims
+    try:
+        mso_mdoc = await mso_mdoc_sign(
+            context.profile, headers, payload, None, ex_record.verification_method
+        )
+        unhexlified = unhexlify(mso_mdoc[2:][:-1])
+        data2 = cbor2.loads(unhexlified)
+        dumps9 = cbor2.dumps(data2['documents'][0])
+        hexlified9 = hexlify(dumps9)
+        hex9 = str(hexlified9, 'ascii')
+        data3 = ''
+    except ValueError as err:
+        raise web.HTTPBadRequest(reason="Bad did or verification method") from err
 
     PID_DATA = ex_record.claims
 
@@ -445,19 +479,9 @@ async def issue_mso_mdoc_cred(ex_record: OID4VCIExchangeRecord, supported_creden
     mdoc = mdoci.new(
         doctype=supported_credential.doc_type,
         data=PID_DATA,
-        devicekeyinfo=PKEY  # TODO
+        devicekeyinfo=HOLDER_KEY
     )
 
-#    mso = msoi.sign()
-    
-#    issuerSigned = mdoci.signed['documents'][0]['issuerSigned']
-    #test = mdoci.signed['documents'][0].dump()
-#    dumps = cbor2.dumps(
-#            {
-#                'nameSpaces': issuerSigned['nameSpaces'],
-#                'issuerAuth': cbor2.loads(mso.encode(tag=False))
-#            }
-#            )
     dumps = cbor2.dumps(mdoci.signed['documents'][0])
     hexlified = hexlify(dumps)
     hex = str(hexlified, 'ascii')
