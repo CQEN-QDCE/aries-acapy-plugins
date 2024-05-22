@@ -1,3 +1,4 @@
+"""X.509 certificate utilities."""
 from datetime import datetime, timezone, timedelta
 from cryptography import x509
 from cryptography.x509.oid import NameOID
@@ -6,8 +7,8 @@ from cwt import COSEKey
 from pycose.keys import CoseKey
 from pycose.keys.keytype import KtyOKP
 
-
 def selfsigned_x509cert(private_key: CoseKey):
+    """Generate a self-signed X.509 certificate from a COSE key."""
     ckey = COSEKey.from_bytes(private_key.encode())
     subject = issuer = x509.Name(
         [

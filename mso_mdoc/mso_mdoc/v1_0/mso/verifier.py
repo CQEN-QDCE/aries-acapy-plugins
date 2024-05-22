@@ -1,18 +1,18 @@
+"""MsoVerifier helper class to verify a mso."""
+import logging
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from pycose.keys import CoseKey
 from pycose.messages import Sign1Message
 import cryptography
 import cbor2
-import logging
 
 LOGGER = logging.getLogger(__name__)
 
-
 class MsoVerifier:
-    """MsoVerifier helper class to verify a mso"""
+    """MsoVerifier helper class to verify a mso."""
 
     def __init__(self, data: cbor2.CBORTag) -> None:
-        """Create a new MsoParser instance"""
+        """Create a new MsoParser instance."""
         self.object: Sign1Message = Sign1Message.decode(data)
         self.public_key: (
             cryptography.hazmat.backends.openssl.ec._EllipticCurvePublicKey
@@ -21,7 +21,7 @@ class MsoVerifier:
 
     @property
     def raw_public_keys(self) -> bytes:
-        """Extract public key from x509 certificates"""
+        """Extract public key from x509 certificates."""
         _mixed_heads = self.object.phdr.items() | self.object.uhdr.items()
         for h, v in _mixed_heads:
             if h.identifier == 33:
@@ -36,7 +36,7 @@ class MsoVerifier:
         )
 
     def load_public_key(self) -> None:
-        """Load the public key from the x509 certificate"""
+        """Load the public key from the x509 certificate."""
         self.attest_public_key()
 
         for i in self.raw_public_keys:
@@ -51,7 +51,7 @@ class MsoVerifier:
         self.object.key = CoseKey.from_pem_public_key(pem_public)
 
     def verify_signature(self) -> bool:
-        """Verify the signature"""
+        """Verify the signature."""
         self.load_public_key()
 
         return self.object.verify_signature()

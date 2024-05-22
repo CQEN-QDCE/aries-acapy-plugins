@@ -1,21 +1,18 @@
+"""Operations supporting mso_mdoc issuance."""
+import os
+import json
+import logging
+from binascii import hexlify
 from typing import Any, Mapping, Optional
-from typing import Any, Mapping
 from pydid import DIDUrl
-
 from aries_cloudagent.core.profile import Profile
 from aries_cloudagent.wallet.default_verification_key_strategy import (
     BaseVerificationKeyStrategy,
 )
 from aries_cloudagent.wallet.base import BaseWallet
 from aries_cloudagent.wallet.util import b64_to_bytes, bytes_to_b64
-
-import os
-import json
-import logging
 import cbor2
 from pycose.keys import CoseKey
-from binascii import hexlify
-
 from ..mso import MsoIssuer
 from ..x509 import selfsigned_x509cert
 
@@ -105,7 +102,8 @@ async def mso_mdoc_sign(
         for doc in data:
             _cert = selfsigned_x509cert(private_key=cose_key)
             msoi = MsoIssuer(data=doc["data"], private_key=cose_key, x509_cert=_cert)
-            mso = msoi.sign(device_key=(headers.get("deviceKey") or ""), doctype=MDOC_TYPE)
+            mso = msoi.sign(device_key=(headers.get("deviceKey") or ""),
+                            doctype=MDOC_TYPE)
             document = {
                 "docType": MDOC_TYPE,
                 "issuerSigned": {

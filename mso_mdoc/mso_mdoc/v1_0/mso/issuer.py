@@ -1,10 +1,11 @@
+"""MsoIssuer helper class to issue a mso."""
 from typing import Union
+import logging
 from datetime import datetime, timedelta, timezone
 import random
 import hashlib
 import os
 import cbor2
-import logging
 from pycose.headers import Algorithm, KID
 from pycose.keys import CoseKey
 from pycose.messages import Sign1Message
@@ -15,6 +16,7 @@ CBORTAGS_ATTR_MAP = {"birth_date": 1004, "expiry_date": 1004, "issue_date": 1004
 
 
 def shuffle_dict(d: dict):
+    """Shuffle a dictionary."""
     keys = list(d.keys())
     for i in range(random.randint(3, 27)):  # nosec: B311
         random.shuffle(keys)
@@ -22,6 +24,7 @@ def shuffle_dict(d: dict):
 
 
 class MsoIssuer:
+    """MsoIssuer helper class to issue a mso."""
     def __init__(
         self,
         data: dict,
@@ -69,7 +72,7 @@ class MsoIssuer:
                 digest_cnt += 1
 
     def format_datetime_repr(self, dt: datetime) -> str:
-        """Format a datetime object to a string representation"""
+        """Format a datetime object to a string representation."""
         return dt.isoformat().split(".")[0] + "Z"
 
     def sign(
@@ -78,7 +81,7 @@ class MsoIssuer:
         valid_from: Union[None, datetime] = None,
         doctype: str = None,
     ) -> Sign1Message:
-        """Sign a mso and returns it in Sign1Message type"""
+        """Sign a mso and returns it in Sign1Message type."""
         utcnow = datetime.now(timezone.utc)
         exp = utcnow + timedelta(hours=(24 * 365))
 
@@ -106,7 +109,8 @@ class MsoIssuer:
                 KID: self.private_key.kid,
                 33: self.x509_cert,
             },
-            # TODO: x509 (cbor2.CBORTag(33)) and federation trust_chain support (cbor2.CBORTag(27?)) here
+            # TODO: x509 (cbor2.CBORTag(33)) and federation trust_chain support
+            # (cbor2.CBORTag(27?)) here
             # 33 means x509chain standing to rfc9360
             # in both protected and unprotected for interop purpose .. for now.
             uhdr={33: self.x509_cert},

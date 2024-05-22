@@ -1,20 +1,17 @@
 """Operations supporting mso_mdoc creation and verification."""
 
-from typing import Any, Mapping
+import logging
+import re
+from binascii import unhexlify
 from typing import Any, Mapping
 from marshmallow import fields
-
 from aries_cloudagent.core.profile import Profile
 from aries_cloudagent.messaging.models.base import BaseModel, BaseModelSchema
 from aries_cloudagent.wallet.error import WalletNotFoundError
 from aries_cloudagent.wallet.base import BaseWallet
 from aries_cloudagent.wallet.util import bytes_to_b58
-
-import logging
-import re
 import cbor2
 from cbor_diag import cbor2diag
-from binascii import unhexlify, hexlify
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePublicKey
@@ -66,7 +63,7 @@ class MdocVerifyResultSchema(BaseModelSchema):
 
 
 async def mso_mdoc_verify(profile: Profile, mdoc_str: str) -> MdocVerifyResult:
-    """Verify a mso_mdoc CBOR string"""
+    """Verify a mso_mdoc CBOR string."""
     mdoc_bytes = unhexlify(mdoc_str)
     mso_mdoc = cbor2.loads(mdoc_bytes)
     mso_verifier = MsoVerifier(mso_mdoc["documents"][0]["issuerSigned"]["issuerAuth"])
