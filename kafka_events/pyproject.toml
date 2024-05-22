@@ -10,20 +10,20 @@ python = "^3.9"
 # Define ACA-Py as an optional/extra dependancy so it can be
 # explicitly installed with the plugin if desired.
 aries-cloudagent = { version = ">=0.10.3, < 1.0.0", optional = true }
-aiokafka = "^0.8.0"
+aiokafka = "^0.10.0"
 ecdsa = "^0.16.1"
-pydantic = "^1.8.2"
+pydantic = "^1.10.14"
 
 [tool.poetry.extras]
 aca-py = ["aries-cloudagent"]
 
 [tool.poetry.dev-dependencies]
 ruff = "^0.1.2"
-black = "23.7.0"
+black = "~23.7.0"
 asynctest = "0.13.0"
 pytest = "~7.4.0"
-pytest-asyncio = "0.14.0"
-pytest-cov = "2.10.1"
+pytest-asyncio = "~0.14.0"
+pytest-cov = "^3.0.0"
 pytest-ruff = "^0.1.1"
 flake8 = "^3.9.1"
 pre-commit = "^2.12.1"
@@ -32,8 +32,8 @@ rope = "^0.19.0"
 
 [tool.poetry.group.integration.dependencies]
 aries-askar = { version = "~0.3.0" }
-indy-credx = { version = "~1.0.0" }
-indy-vdr = { version = "~0.3.3" }
+indy-credx = { version = "~1.1.1" }
+indy-vdr = { version = "~0.4.1" }
 ursa-bbs-signatures = { version = "~1.0.1" }
 python3-indy = { version = "^1.11.1" }
 
