@@ -19,9 +19,6 @@ from aries_cloudagent.wallet.base import WalletError
 from aries_cloudagent.wallet.error import WalletNotFoundError
 import os
 import cbor2
-from .pymdoccbor.mso.issuer import MsoIssuer
-from .pymdoccbor.mdoc.issuer import MdocCborIssuer
-from .pymdoccbor.mdoc.verifier import MdocCbor
 from  mso_mdoc.v1_0.mdoc import mso_mdoc_sign, mso_mdoc_verify
 
 from aries_cloudagent.wallet.jwt import (
@@ -359,25 +356,6 @@ async def issue_cred(request: web.Request):
     except (StorageError, BaseModelError, StorageNotFoundError) as err:
         raise web.HTTPBadRequest(reason=err.roll_up) from err
 
-    if supported.format == "mso_mdoc":
-        pop = await handle_proof_of_posession(context.profile, body["proof"], ex_record.nonce)
-        return await issue_mso_mdoc_cred(ex_record, supported, context, pop)
-    if supported.format != "jwt_vc_json":
-        raise web.HTTPUnprocessableEntity(reason="Only jwt_vc_json is supported.")
-    if supported.format_data is None:
-        LOGGER.error("No format_data for supported credential of format jwt_vc_json")
-        raise web.HTTPInternalServerError()
-
-    if supported.format != body.get("format"):
-        raise web.HTTPBadRequest(reason="Requested format does not match offer.")
-    if not types_are_subset(body.get("types"), supported.format_data.get("types")):
-        raise web.HTTPBadRequest(reason="Requested types does not match offer.")
-
-    current_time = datetime.datetime.now(datetime.timezone.utc)
-    current_time_unix_timestamp = int(current_time.timestamp())
-    formatted_time = current_time.strftime("%Y-%m-%dT%H:%M:%SZ")
-
-    cred_id = str(uuid.uuid4())
     if "proof" not in body:
         raise web.HTTPBadRequest(reason="proof is required for jwt_vc_json")
     if ex_record.nonce is None:
@@ -388,8 +366,57 @@ async def issue_cred(request: web.Request):
     pop = await handle_proof_of_posession(
         context.profile, body["proof"], ex_record.nonce
     )
+
     if not pop.verified:
         raise web.HTTPBadRequest(reason="Invalid proof")
+
+    if supported.format != body.get("format"):
+        raise web.HTTPBadRequest(reason="Requested format does not match offer.")
+
+    if supported.format == "mso_mdoc":
+        if body.get("doctype") != 'org.iso.18013.5.1.mDL':
+            raise web.HTTPBadRequest(reason="Only 'org.iso.18013.5.1.mDL' is supported.")
+        return await issue_mso_mdoc_cred(ex_record, context, pop)
+    if supported.format == "jwt_vc_json":
+        if not types_are_subset(body.get("types"), supported.format_data.get("types")):
+            raise web.HTTPBadRequest(reason="Requested types does not match offer.")
+        return await issue_jwt_vc_json_cred(ex_record, supported, context, pop)
+
+    raise web.HTTPUnprocessableEntity(reason="Only mso_mdoc and jwt_vc_json are supported.")
+
+class DeviceKey:
+    """ . """
+    @classmethod
+    def from_pop(cls, pop: PopResult) -> CoseKey:
+        """
+        Initialize a COSE key from a proof of possession result.
+
+        :param pop: Proof of possession result to translate to COSE key.
+        :return: An initialized COSE Key object.
+        """
+
+        x_bytes = urlsafe_b64decode(pop.holder_jwk['x'] + '=' * (4 - len(pop.holder_jwk['x']) % 4))
+        y_bytes = urlsafe_b64decode(pop.holder_jwk['y'] + '=' * (4 - len(pop.holder_jwk['y']) % 4))
+        holder_key = {
+            'KTY': pop.holder_jwk['kty'] + '2',
+            'CURVE': pop.holder_jwk['crv'].replace('-', '_'),
+            'X': x_bytes,
+            'Y': y_bytes
+        }
+        return CoseKey.from_dict(holder_key)
+
+async def issue_jwt_vc_json_cred(ex_record: OID4VCIExchangeRecord, supported: SupportedCredential, context: AdminRequestContext, pop: PopResult):
+    """Issue an jwt_vc_json credential."""
+
+    if supported.format_data is None:
+        LOGGER.error("No format_data for supported credential of format jwt_vc_json")
+        raise web.HTTPInternalServerError()
+
+    current_time = datetime.datetime.now(datetime.timezone.utc)
+    current_time_unix_timestamp = int(current_time.timestamp())
+    formatted_time = current_time.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    cred_id = str(uuid.uuid4())
 
     if not pop.holder_kid:
         raise web.HTTPBadRequest(reason="No kid in proof; required for jwt_vc_json")
@@ -430,62 +457,22 @@ async def issue_cred(request: web.Request):
         }
     )
 
-async def issue_mso_mdoc_cred(ex_record: OID4VCIExchangeRecord, supported_credential: SupportedCredential, context: AdminRequestContext, pop: PopResult):
+async def issue_mso_mdoc_cred(ex_record: OID4VCIExchangeRecord, context: AdminRequestContext, pop: PopResult):
+    """Issue an mso_mdoc credential."""
 
-    #CoseKey.from_dict()
-
-    PKEY = {
-        'KTY': 'EC2',
-        'CURVE': 'P_256',
-        'ALG': 'ES256',
-        'D': os.urandom(32),
-        'KID': b"demo-kid"
-    }
-    xbytes = urlsafe_b64decode(pop.holder_jwk['x'] + '=' * (4 - len(pop.holder_jwk['x']) % 4))
-    len1 = len(xbytes)
-    ybytes = urlsafe_b64decode(pop.holder_jwk['y'] + '=' * (4 - len(pop.holder_jwk['y']) % 4))
-    len2 = len(ybytes)
-    HOLDER_KEY = {
-        'KTY': pop.holder_jwk['kty'] + '2',
-        'CURVE': pop.holder_jwk['crv'].replace('-', '_'),
-        'X': xbytes,
-        'Y': ybytes
-    }
-    HOLDER_KEY = CoseKey.from_dict(HOLDER_KEY)
-    encoded = cbor2.loads(HOLDER_KEY.encode())
     headers = {
-        "deviceKey": encoded
+        "deviceKey": cbor2.loads(DeviceKey.from_pop(pop).encode())
     }
     payload = ex_record.claims
     try:
-        mso_mdoc = await mso_mdoc_sign(
+        device_response_cbor_data = await mso_mdoc_sign(
             context.profile, headers, payload, None, ex_record.verification_method
         )
-        unhexlified = unhexlify(mso_mdoc[2:][:-1])
-        data2 = cbor2.loads(unhexlified)
-        dumps9 = cbor2.dumps(data2['documents'][0])
-        hexlified9 = hexlify(dumps9)
-        hex9 = str(hexlified9, 'ascii')
-        data3 = ''
+        device_response = cbor2.loads(unhexlify(device_response_cbor_data[2:][:-1]))
+        mso_mdoc = str(hexlify(cbor2.dumps(device_response['documents'][0])), 'ascii')
     except ValueError as err:
         raise web.HTTPBadRequest(reason="Bad did or verification method") from err
 
-    PID_DATA = ex_record.claims
-
-    mdoci = MdocCborIssuer(
-        private_key=PKEY
-    )
-
-    mdoc = mdoci.new(
-        doctype=supported_credential.doc_type,
-        data=PID_DATA,
-        devicekeyinfo=HOLDER_KEY
-    )
-
-    dumps = cbor2.dumps(mdoci.signed['documents'][0])
-    hexlified = hexlify(dumps)
-    hex = str(hexlified, 'ascii')
-    
     async with context.session() as session:
         ex_record.state = OID4VCIExchangeRecord.STATE_ISSUED
         # Cause webhook to be emitted
@@ -493,11 +480,11 @@ async def issue_mso_mdoc_cred(ex_record: OID4VCIExchangeRecord, supported_creden
         # Exchange is completed, record can be cleaned up
         # But we'll leave it to the controller
         # await ex_record.delete_record(session)
-            
+
     return web.json_response(
         {
             "format": "mso_mdoc",
-            "credential": hex,
+            "credential": mso_mdoc,
         }
     )
 
