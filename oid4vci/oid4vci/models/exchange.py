@@ -35,7 +35,8 @@ class OID4VCIExchangeRecord(BaseExchangeRecord):
         exchange_id: Optional[str] = None,
         state: str,
         supported_cred_id: str,
-        credential_subject: Dict[str, Any],
+        credential_subject: Dict[str, Any] = None,
+        claims: Dict[str, Any]  = None,
         verification_method: str,
         nonce: Optional[str] = None,
         pin: Optional[str] = None,
@@ -47,6 +48,7 @@ class OID4VCIExchangeRecord(BaseExchangeRecord):
         super().__init__(exchange_id, state or "init", **kwargs)
         self.supported_cred_id = supported_cred_id
         self.credential_subject = credential_subject  # (received from submit)
+        self.claims = claims  # (received from submit)
         self.verification_method = verification_method
         self.nonce = nonce  # in offer
         self.pin = pin  # (when relevant)
@@ -66,6 +68,7 @@ class OID4VCIExchangeRecord(BaseExchangeRecord):
             for prop in (
                 "supported_cred_id",
                 "credential_subject",
+                "claims",
                 "verification_method",
                 "nonce",
                 "pin",
@@ -99,9 +102,15 @@ class OID4VCIExchangeRecordSchema(BaseRecordSchema):
         },
     )
     credential_subject = fields.Dict(
-        required=True,
+        required=False,
         metadata={
             "description": "desired claim and value in credential",
+        },
+    )
+    claims = fields.Dict(
+        required=False,
+        metadata={
+            "description": "Desired claims and values in mso_mdoc credential format",
         },
     )
     verification_method = fields.Str(
