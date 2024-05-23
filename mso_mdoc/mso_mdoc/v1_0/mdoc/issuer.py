@@ -102,16 +102,19 @@ async def mso_mdoc_sign(
         for doc in data:
             _cert = selfsigned_x509cert(private_key=cose_key)
             msoi = MsoIssuer(data=doc["data"], private_key=cose_key, x509_cert=_cert)
-            mso = msoi.sign(device_key=(headers.get("deviceKey") or ""),
-                            doctype=MDOC_TYPE)
+            signed_mso = msoi.sign(device_key=(headers.get("deviceKey") or ""),
+                                   doctype=MDOC_TYPE)
+            issuer_auth = cbor2.loads(signed_mso.encode()).value
+            # Encode the MSO.
+            issuer_auth[2] = cbor2.dumps(cbor2.CBORTag(24, value=issuer_auth[2]))
             document = {
                 "docType": MDOC_TYPE,
                 "issuerSigned": {
                     "nameSpaces": {
-                        ns: [cbor2.CBORTag(24, value={k: v}) for k, v in dgst.items()]
+                        ns: [cbor2.CBORTag(24, value=v) for k, v in dgst.items()]
                         for ns, dgst in msoi.disclosure_map.items()
                     },
-                    "issuerAuth": mso.encode(),
+                    "issuerAuth": issuer_auth
                 },
                 # this is required during the presentation.
                 #  'deviceSigned': {
