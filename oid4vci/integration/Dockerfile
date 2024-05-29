@@ -1,4 +1,15 @@
-FROM python:3.9-slim-bookworm AS base
+ARG VARIANT="3.10-bullseye"
+
+FROM mcr.microsoft.com/vscode/devcontainers/python:0-${VARIANT} AS clone
+RUN git clone https://github.com/CQEN-QDCE/aries-acapy-plugins.git
+
+FROM python:3.10-slim-bookworm AS base
+
+WORKDIR /usr/src
+
+RUN mkdir mso_mdoc
+COPY --from=clone /aries-acapy-plugins/mso_mdoc mso_mdoc
+
 WORKDIR /usr/src/app
 
 ENV POETRY_VERSION=1.5.0

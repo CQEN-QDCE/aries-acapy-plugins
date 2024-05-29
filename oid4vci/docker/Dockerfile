@@ -1,4 +1,14 @@
+ARG VARIANT="3.9-bullseye"
+
+FROM mcr.microsoft.com/vscode/devcontainers/python:0-${VARIANT} AS clone
+RUN git clone https://github.com/CQEN-QDCE/aries-acapy-plugins.git
+
 FROM python:3.9-slim-bullseye AS base
+WORKDIR /usr/src
+
+RUN mkdir mso_mdoc
+COPY --from=clone /aries-acapy-plugins/mso_mdoc mso_mdoc
+
 WORKDIR /usr/src/app
 
 # Install and configure poetry
@@ -15,7 +25,7 @@ RUN poetry config virtualenvs.in-project true
 # Setup project
 RUN mkdir oid4vci && touch oid4vci/__init__.py
 COPY pyproject.toml poetry.lock README.md ./
-RUN poetry install --without dev --extras "aca-py"
+RUN poetry install --without dev --extras "mdoc aca-py"
 USER $user
 
 FROM python:3.9-bullseye

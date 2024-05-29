@@ -315,7 +315,7 @@ class SupportedCredCreateRequestSchema(OpenAPISchema):
     """Schema for SupportedCredCreateRequestSchema."""
 
     format = fields.Str(required=True, metadata={"example": "jwt_vc_json or mso_mdoc"})
-    doc_type = fields.Str(required=True, metadata={"example": "org.iso.18013.5.1.mDL"})
+    doc_type = fields.Str(required=False, metadata={"example": "org.iso.18013.5.1.mDL"})
     identifier = fields.Str(
         data_key="id", required=True, metadata={"example": "UniversityDegreeCredential"}
     )
@@ -327,6 +327,7 @@ class SupportedCredCreateRequestSchema(OpenAPISchema):
     )
     display = fields.List(
         fields.Dict(),
+        required=False,
         metadata={
             "example": [
                 {
