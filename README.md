@@ -1,59 +1,50 @@
 # aries-acapy-plugins
 
-This repository contains approved and tested plugins for Aries Cloudagent Python. This is to encourage collaboration and sharing of useful features not directly included in aca-py.
+Ce dépôt contient des extensions approuvés et testés pour le Aries Cloudagent Python (ACA-Py). La pssibilité d'étendre ACA-Py a pour but d'encourager la collaboration et le partage de fonctionnalités utiles qui ne sont pas directement incluse. Deux(2) extensions supplémentaire ont été ajouté. Une pour créer un mDL et l'autre pour permettre l'émission d'attestations vérifiables (dont le mDL) via le protocole OID4VCI.
 
-## Developer Notes
+## Notes aux développeurs
 
-- Open devcontainer in VS Code
-- Python and all dependencies will be loaded
-- Poetry will be loaded and configured, dependencies will be installed
-- Docker and Docker Compose will be available
+- Ouvrir le "devcontainer" dans VS Code
+- Python et toutes les d/pendences vont être chargées
+- Poetry va être chargé et paramétré, les dépendences vont être installées
+- Docker et Docker Compose vont être disponibles
 
-## Repo Management Script
+## Documentation de l'extension
 
-A script was developed to help with maitenance of the repo called `repo_manager.py`. To run it you need a current version of poetry and python available.
-Run `python repo_manager.py` and you will be met with 2 options.
- - (1) Is used for starting or adding a new plugin. It will generate all the common scaffolding for a plugin which has the expected format.
- - (2) Is used for updating and changing common poetry dependencies and configurations. It takes the poetry sections in the `pyproject.toml` files from the `plugin_globals` directory and combines them with the local plugin poetry sections. For the dependencies the common will be overridden by the globals. The other config sections will be replaced by the global configs. Then the lock files will be removed and re-installed.
+L'équipe de développement devrait décrire ce que fait l'extension, toutes les limitations éventuelles, tous les problèmes connus d'interaction avec d'autres plugins, etc. Une documentation complète, incluant un exemple de plugin_config, devrait être fournie.
 
-## Plugin Documentation
+Cette documentation devrait être fournie à la racine de votre extension sous forme de fichier README.md. Avec au moins une section "Description" et une section "Configuration".
 
-The development team should describe what the plugin does, any limitations (ex only in multitenant mode), any known issues interacting with other plugins, etc. Full documentation including a plugin_config sample should be provided.
+## Construire et exécuter
 
-This documentation should be provided in your plugin root as a README.md file. With at least a `Description` and `Configuration` section.
+Un fichier [Dockerfile](./basicmessage_storage/docker/Dockerfile) est founi pour exécuter les tests d'intégration. Cette image n'est pas destinée à la production car elle copie le code source de l'extension et charge ses dépendances (y compris ACA-Py) ainsi qu'un fichier de configuration ACA-Py simplifié.: [default.yml](./basicmessage_storage/docker/default.yml).
 
-## Build and Run
+## Exécuter et déboguer
 
-A [Dockerfile](./basicmessage_storage/docker/Dockerfile) is provided to run integration tests. This image is not intended for production as it copies the plugin source and loads its dependencies (including ACA-Py) along with a simplistic ACA-Py configuration file: [default.yml](./basicmessage_storage/docker/default.yml).
+Dans le devcontainer, vous pouvez exécuter une instance ACA-Py avec vos sources d'extension chargées et définir des points d'arrêt pour déboguer (voir `launch.json`).
 
-## Run and Debug
+Pour exécuter votre code ACA-Py en mode débogue, accédez à la vue "exécuter et déboguer", sélectionnez "Run/Debug Plugin" et appuyez sur "Démarrer le déboguage (F5)". Utilisant [default.yml](./basicmessage_storage/docker/default.yml), votre agent swagger est disponible à l'adresse http://localhost:3001/api/doc.
 
-In the devcontainer, we can run an ACA-Py instance with our plugin source loaded and set breakpoints for debug (see `launch.json`).
+## Test
 
-To run your ACA-Py code in debug mode, go to the `Run and Debug` view, select "Run/Debug Plugin" and click `Start Debugging (F5)`. Using [default.yml](./basicmessage_storage/docker/default.yml), your agent swagger is available at http://localhost:3001/api/doc.
+Pour que l'extension soit acceptée dans ce dépôt, elle doit avoir été soumise à des tests adéquats.
 
-## Testing
+#### Tests unitaires:
+- Il devrait y avoir une couverture adéquate de tests unitaires. Un rapport de couverture est généré lorsque la commande poetry run pytest . est exécutée depuis le devcontainer. Un bon objectif à viser est 90%, mais la qualité des tests sur les sections critiques est plus importante que le pourcentage de couverture.
+coverage percentage.
+- Placez vos tests unitaires dans un dossier 'tests' dans le chemin de version de votre extension et nommez tous les fichiers et tests avec le préfixe test_.
 
-For the plugin to be accepted into this repo it must have adequate testing.
+#### Tests d'integration:
+- Tous les extensions devraient avoir une suite de tests d'intégration. La suite de base sera créée pour votre extension après l'exécution du script de mise à jour.
+- Voir [integration tests](./basicmessage_storage/integration/README.md). Vous devriez avoir tout ce dont vous avez besoin pour commencer les tests d'intégration, et un test d'exemple sera fourni.
 
-#### Unit Testing:
+## Déploiement
 
-- There should be adequate unit testing coverage. A coverage report is created when `poetry run pytest .` in ran from the devcontainer. A good mark to aim for is 90% but the quality of the tests on critical sections is more important than coverage percentage.
-- Mocking can be challenging. Study the existing plugins in this repo and aca-py in general for good examples of mocks and fixtures.
-- Put your unit tests in a tests folder in your plugin version path and name all files and test with the `test_` prefix.
+Pour une utilisation en production, les extensions doivent être installêes comme des bibliothèques dans une image ACA-Py.
 
-#### Integration Testing:
+Cela requiert d'avoir un fichier Docker et un fichier de paramètres pour votre agent.
 
-- All plugins should have a suite of integration tests. The base suite will be created for your plugin after running the updater script
-- See [integration tests](./basicmessage_storage/integration/README.md). You should have everything you need to start integration testing and a sample test will be provided.
-
-## Deploy
-
-For production use, plugins should be installed as libraries to an ACA-Py image.
-
-This requires having a Dockerfile and a config file for your agent.
-
-example Dockerfile:
+exemple de fichier Docker:
 
 ```
 FROM ghcr.io/hyperledger/aries-cloudagent-python:py3.9-0.11.0
@@ -70,7 +61,7 @@ COPY ./configs configs
 CMD ["aca-py"]
 ```
 
-example config file (local single tenant):
+exemple de fichier de paramétrage:
 
 ```
 label: plugins-agent
@@ -103,7 +94,7 @@ plugin:
   - connection_update.v1_0
 ```
 
-Now you can deploy a agent with as many plugins as you want as long as they are decalred in your build config file and installed.
+Maintenant, vous pouvez déployer un agent avec autant de d'extensions que vous le souhaitez, à condition qu'ils soient déclarés dans votre fichier de configuration de build et installés.
 
 ```
 docker build -f <Dockerfile> --tag acapy_plugins .
